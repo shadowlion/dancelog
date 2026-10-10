@@ -1,29 +1,28 @@
-FROM alpine:latest
+FROM alpine:latest AS downloader
 
 ARG PB_VERSION=0.40.5
+ARG TARGETOS
+ARG TARGETARCH
 
+ENV BUILDX_ARCH="${TARGETOS:-linux}_${TARGETARCH:-amd64}"
+
+# Install the dependencies
 RUN apk add --no-cache \
+    ca-certificates \
     unzip \
-    ca-certificates
+    wget \
+    zip \
+    zlib-dev
 
-# download and unzip PocketBase
-ADD https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip /tmp/pb.zip
-RUN unzip /tmp/pb.zip -d /pb/
+RUN wget https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_${BUILDX_ARCH}.zip \
+    && unzip pocketbase_${PB_VERSION}_${BUILDX_ARCH}.zip \
+    && chmod +x /pocketbase
 
-# uncomment to copy the local pb_migrations dir into the image
-COPY ./pb_migrations /pb/pb_migrations
+FROM scratch
 
-# uncomment to copy the local pb_hooks dir into the image
-# COPY ./pb_hooks /pb/pb_hooks
+EXPOSE 8090
 
-EXPOSE 8080
+COPY --from=downloader /pocketbase /usr/local/bin/pocketbase
+COPY ./pb_migrations /pb_migrations
 
-# start PocketBase
-# CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080"]
-
-ENTRYPOINT []
-
-COPY entrypoint.sh /pb/entrypoint.sh
-RUN chmod +x /pb/entrypoint.sh
-
-CMD ["/pb/entrypoint.sh"]
+CMD ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations"]
