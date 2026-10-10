@@ -6,7 +6,7 @@ echo "Running on port $PORT"
 
 if [ ! -f /pb_data/data.db ]; then
   echo "First run detected. Creating superuser..."
-  /usr/local/bin/pocketbase superuser upsert $ADMIN_EMAIL $ADMIN_PASSWORD
+  /pb/pocketbase superuser upsert $ADMIN_EMAIL $ADMIN_PASSWORD
 fi
 
 exec /pb/pocketbase serve --http=0.0.0.0:$PORT
